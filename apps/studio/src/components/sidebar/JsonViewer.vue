@@ -62,7 +62,6 @@
     <div class="empty-state" v-show="empty">
       Open a table to view its data
     </div>
-    <json-viewer-upsell v-if="$store.getters.isCommunity" />
   </div>
 </template>
 
