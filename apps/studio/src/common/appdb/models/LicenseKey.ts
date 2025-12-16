@@ -64,8 +64,8 @@ export class LicenseKey extends ApplicationEntity {
 
 
   static async getLicenseStatus(): Promise<LicenseStatus> {
-  const licenses = await LicenseKey.find();
-  return keysToStatus(licenses)
+    const licenses = await LicenseKey.find();
+    return keysToStatus(licenses)
   }
 
   public get active() : boolean {
