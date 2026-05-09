@@ -10,7 +10,7 @@ import { execSync } from 'child_process';
 import 'electron-log/preload';
 import pluralize from 'pluralize';
 import type { SaveFileOptions } from '@/backend/lib/FileHelpers';
-
+import type { NativePluginMenuItem } from '@/services/plugin/types';
 
 const electron = require('@electron/remote');
 
@@ -72,6 +72,7 @@ export const api = {
     ipcRenderer.send('install-update');
   },
   openExternally(link: string) {
+    // URL protocol is validated in the main process by safeOpenExternal.
     ipcRenderer.send(AppEvent.openExternally, [link]);
   },
   resolve(toResolve: string) {
@@ -103,7 +104,9 @@ export const api = {
     return electron.dialog.showSaveDialogSync(args);
   },
   openLink(link: string) {
-    return electron.shell.openExternal(link);
+    // Route through the main process so safeOpenExternal validates the
+    // protocol — never call shell.openExternal directly from preload.
+    ipcRenderer.send(AppEvent.openExternally, [link]);
   },
   onMaximize(func: any, sId: string) {
     ipcRenderer.on(`maximize-${sId}`, func);
@@ -184,6 +187,12 @@ export const api = {
     save(options: SaveFileOptions) {
       return ipcRenderer.invoke('fileHelpers:save', options);
     },
+  },
+  addNativeMenuItem(item: NativePluginMenuItem) {
+    ipcRenderer.send('add-native-menu-item', item);
+  },
+  removeNativeMenuItem(id: string) {
+    ipcRenderer.send('remove-native-menu-item', id);
   },
 }
 

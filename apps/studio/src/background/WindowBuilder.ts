@@ -6,6 +6,7 @@ import platformInfo from '../common/platform_info'
 import { IGroupedUserSettings } from '../common/appdb/models/user_setting'
 import rawLog from '@bksLogger'
 import querystring from 'query-string'
+import { safeOpenExternal } from './lib/electron/safeOpenExternal'
 
 
 // eslint-disable-next-line
@@ -55,7 +56,8 @@ class BeekeeperWindow {
         spellcheck: false,
         sandbox: false,
       },
-      icon: getIcon()
+      icon: getIcon(),
+      show: false,
     })
 
     const devUrl = 'http://localhost:3003'
@@ -78,9 +80,15 @@ class BeekeeperWindow {
       if (url === this.appUrl) return // this is good
       log.info("navigate to", url)
       e.preventDefault()
-      const u = new URL(url)
+      let u: URL
+      try {
+        u = new URL(url)
+      } catch {
+        log.warn('will-navigate: ignoring invalid URL', url)
+        return
+      }
       u.searchParams.append('ref', 'bks-app')
-      electron.shell.openExternal(u.toString());
+      safeOpenExternal(u.toString());
     })
 
     this.win.webContents.setWindowOpenHandler(({ url }) => {
@@ -102,10 +110,14 @@ class BeekeeperWindow {
 
     this.win.on('maximize', () => {
       this.win.webContents.send(`maximize-${this.sId}`)
+      this.settings.windowMaximized.value = true
+      this.settings.windowMaximized.save().then(_.noop).catch(log.error)
     })
 
     this.win.on('unmaximize', () => {
       this.win.webContents.send(`unmaximize-${this.sId}`)
+      this.settings.windowMaximized.value = false
+      this.settings.windowMaximized.save().then(_.noop).catch(log.error)
     })
 
     this.win.on('enter-full-screen', () => {
@@ -133,6 +145,12 @@ class BeekeeperWindow {
     // } catch (e) {
     //   log.error('devtools failed to install:', e.toString())
     // }
+
+    if (this.settings.windowMaximized.value) {
+      this.win.maximize()
+    }
+
+    this.win.show()
 
     await this.win.loadURL(this.appUrl)
     if ((platformInfo.env.development && !platformInfo.env.test) || platformInfo.debugEnabled) {
